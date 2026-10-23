@@ -33,6 +33,10 @@ public final class EarsConfig {
     public int outerLeftX=8,outerLeftY=0,outerRightX=8,outerRightY=0;
     public int innerLeftX=8,innerLeftY=0,innerRightX=8,innerRightY=0;
 
+    // Persist selected RGB colors so the picker works immediately, even offline.
+    public int outerLeftPickedColor=0xFFFFFF,outerRightPickedColor=0xFFFFFF;
+    public int innerLeftPickedColor=0xF4A6B8,innerRightPickedColor=0xF4A6B8;
+
     public static EarsConfig load() {
         try {
             if (Files.exists(FILE)) {
@@ -52,6 +56,10 @@ public final class EarsConfig {
                     loaded.outerRightX=clamp(loaded.outerRightX);loaded.outerRightY=clamp(loaded.outerRightY);
                     loaded.innerLeftX=clamp(loaded.innerLeftX);loaded.innerLeftY=clamp(loaded.innerLeftY);
                     loaded.innerRightX=clamp(loaded.innerRightX);loaded.innerRightY=clamp(loaded.innerRightY);
+                    loaded.outerLeftPickedColor &= 0xFFFFFF;
+                    loaded.outerRightPickedColor &= 0xFFFFFF;
+                    loaded.innerLeftPickedColor &= 0xFFFFFF;
+                    loaded.innerRightPickedColor &= 0xFFFFFF;
                     return loaded;
                 }
             }
@@ -64,13 +72,15 @@ public final class EarsConfig {
     }
 
     private static int clamp(int n){return Math.max(0,Math.min(63,n));}
-    public void selectPixel(int part,int x,int y){
-        x=clamp(x);y=clamp(y);
+    public void selectPixel(int part,int x,int y,int rgb){
+        x=clamp(x);y=clamp(y);rgb &= 0xFFFFFF;
         switch(part){
-            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;customColor=false;}
-            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;customColor=false;}
-            case 2 -> {innerLeftX=x;innerLeftY=y;innerLeftPicked=true;innerMode="PICKED";}
-            case 3 -> {innerRightX=x;innerRightY=y;innerRightPicked=true;innerMode="PICKED";}
+            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;outerLeftPickedColor=rgb;}
+            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;outerRightPickedColor=rgb;}
+            case 2 -> {innerLeftX=x;innerLeftY=y;innerLeftPicked=true;
+                       innerLeftPickedColor=rgb;innerMode="PICKED";}
+            case 3 -> {innerRightX=x;innerRightY=y;innerRightPicked=true;
+                       innerRightPickedColor=rgb;innerMode="PICKED";}
             default -> throw new IllegalArgumentException("Invalid ear part");
         }
         save();
@@ -88,6 +98,8 @@ public final class EarsConfig {
         innerRightRegion = 0;
         outerLeftPicked=false;outerRightPicked=false;
         innerLeftPicked=false;innerRightPicked=false;
+        outerLeftPickedColor=0xFFFFFF;outerRightPickedColor=0xFFFFFF;
+        innerLeftPickedColor=0xF4A6B8;innerRightPickedColor=0xF4A6B8;
         outerLeftX=8;outerLeftY=0;outerRightX=8;outerRightY=0;
         innerLeftX=8;innerLeftY=0;innerRightX=8;innerRightY=0;
     }
