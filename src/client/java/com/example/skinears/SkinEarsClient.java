@@ -14,7 +14,7 @@ public final class SkinEarsClient implements ClientModInitializer {
  @Override public void onInitializeClient() {
   config=EarsConfig.load();
   KeyMapping.Category category=KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID,"settings"));
-  KeyMapping key=KeyMappingHelper.registerKeyMapping(new KeyMapping("key.skinears.open",InputConstants.Type.KEYSYM,InputConstants.KEY_K,category));
+  KeyMapping key=KeyMappingHelper.registerKeyMapping(new KeyMapping("key.skinears.open",InputConstants.Type.KEYBOARD,InputConstants.KEY_K,category));
   ClientTickEvents.END_CLIENT_TICK.register(client -> {
    while(key.consumeClick()) if(client.player!=null) client.gui.setScreen(new EarsScreen(client.gui.screen()));
   });
