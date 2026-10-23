@@ -64,21 +64,37 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
             if (!local) {regionIndex=0;innerIndex=0;}
             regionIndex=Math.floorMod(regionIndex,SkinRegion.values().length);
             innerIndex=Math.floorMod(innerIndex,SkinRegion.values().length);
-            int outerTint = local && settings.customColor ?
-                    0xFF000000 | (settings.color & 0xFFFFFF) : 0xFFFFFFFF;
-            Identifier outerTexture = local && settings.customColor ? WHITE : skin;
+            boolean pickedOuter = local && !settings.customColor &&
+                (side==0 ? settings.outerLeftPicked:settings.outerRightPicked);
+            int pickX=side==0?settings.outerLeftX:settings.outerRightX;
+            int pickY=side==0?settings.outerLeftY:settings.outerRightY;
+            int pickedOuterColor=pickedOuter ?
+                SkinEarsClient.COLORS.pixel(state.skin,pickX,pickY) : -1;
+
+            boolean outerTinted=local && settings.customColor || pickedOuterColor>=0;
+            int outerColor=local && settings.customColor ? settings.color :
+                pickedOuterColor>=0 ? pickedOuterColor : 0xFFFFFF;
+            Identifier outerTexture=outerTinted?WHITE:skin;
             collector.submitModel(outer[shape][side][regionIndex], state, poses,
                     RenderTypes.entityCutout(outerTexture), light, overlay,
-                    outerTint, null, state.outlineColor);
+                    0xFF000000 | (outerColor&0xFFFFFF), null, state.outlineColor);
 
-            String innerMode = local ? settings.innerMode : "PINK";
-            boolean copied = "SKIN".equals(innerMode);
-            Identifier innerTexture = copied ? skin : WHITE;
-            int tint = "CUSTOM".equals(innerMode) ?
-                    0xFF000000 | (settings.innerColor & 0xFFFFFF) : 0xFFF4A6B8;
+            String mode=local?settings.innerMode:"PINK";
+            boolean pickInner="PICKED".equals(mode) &&
+                (side==0?settings.innerLeftPicked:settings.innerRightPicked);
+            int ix=side==0?settings.innerLeftX:settings.innerRightX;
+            int iy=side==0?settings.innerLeftY:settings.innerRightY;
+            int sampledInner=pickInner?
+                SkinEarsClient.COLORS.pixel(state.skin,ix,iy):-1;
+            // Both the whole-region texture and an exact sampled pixel are supported.
+            boolean copiedRegion="SKIN".equals(mode);
+            Identifier innerTexture=copiedRegion?skin:WHITE;
+            int innerColor="CUSTOM".equals(mode)?settings.innerColor:
+                sampledInner>=0?sampledInner:0xF4A6B8;
             collector.submitModel(inner[shape][side][innerIndex], state, poses,
                     RenderTypes.entityCutout(innerTexture), light, overlay,
-                    copied ? 0xFFFFFFFF : tint, null, state.outlineColor);
+                    copiedRegion?0xFFFFFFFF:0xFF000000|(innerColor&0xFFFFFF),
+                    null, state.outlineColor);
         }
         poses.popPose();
     }
