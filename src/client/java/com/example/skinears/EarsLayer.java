@@ -114,26 +114,36 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
                 .texOffs(u, 0).addBox(1.75f, -12.7f, -0.7f, 1.75f, 1.9f, 1.35f, grow);
             root.addOrReplaceChild("cat_ears", blocks, PartPose.ZERO);
         } else {
-            // Low, floppy ear flaps extend down beside the head.
-            root.addOrReplaceChild("left_flap",
+            // The small upper "fold" hugs the crown; the much larger lower
+            // flap droops alongside the cheeks (mirrored left and right).
+            // These are separate articulated pieces, not upright blocks.
+            root.addOrReplaceChild("dog_left_fold",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-5.65f, -8.2f, -0.9f, 2.25f, 4.45f, 1.7f, grow),
-                PartPose.ZERO);
-            root.addOrReplaceChild("right_flap",
+                    .addBox(-1.05f, -2.35f, -0.98f, 2.1f, 2.9f, 1.85f, grow),
+                PartPose.offsetAndRotation(-4.15f, -8.75f, 0.05f,
+                    0.18f, 0f, 0.72f));
+            root.addOrReplaceChild("dog_right_fold",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(3.4f, -8.2f, -0.9f, 2.25f, 4.45f, 1.7f, grow),
-                PartPose.ZERO);
+                    .addBox(-1.05f, -2.35f, -0.98f, 2.1f, 2.9f, 1.85f, grow),
+                PartPose.offsetAndRotation(4.15f, -8.75f, 0.05f,
+                    0.18f, 0f, -0.72f));
 
-            // Rotated upper sections curve inward toward the crown/head.
-            // Left = positive Z roll; right = negative Z roll.
-            root.addOrReplaceChild("left_fold",
+            // The hanging pieces overlap their folds, and their rounded
+            // blocky tips are lower and a little wider than the roots.
+            root.addOrReplaceChild("dog_left_flap",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.02f, -2.6f, -0.95f, 2.05f, 2.7f, 1.8f, grow),
-                PartPose.offsetAndRotation(-4.42f, -8.1f, 0f, 0f, 0f, 0.64f));
-            root.addOrReplaceChild("right_fold",
+                    .addBox(-1.15f, -0.2f, -1.08f, 2.3f, 4.7f, 1.95f, grow)
+                    .texOffs(u, 0)
+                    .addBox(-0.95f, 3.95f, -1.0f, 1.9f, 1.25f, 1.75f, grow),
+                PartPose.offsetAndRotation(-4.95f, -7.65f, 0.08f,
+                    0.08f, 0f, 0.20f));
+            root.addOrReplaceChild("dog_right_flap",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.02f, -2.6f, -0.95f, 2.05f, 2.7f, 1.8f, grow),
-                PartPose.offsetAndRotation(4.42f, -8.1f, 0f, 0f, 0f, -0.64f));
+                    .addBox(-1.15f, -0.2f, -1.08f, 2.3f, 4.7f, 1.95f, grow)
+                    .texOffs(u, 0)
+                    .addBox(-0.95f, 3.95f, -1.0f, 1.9f, 1.25f, 1.75f, grow),
+                PartPose.offsetAndRotation(4.95f, -7.65f, 0.08f,
+                    0.08f, 0f, -0.20f));
         }
 
         return LayerDefinition.create(mesh, 64, 64).bakeRoot();
@@ -148,11 +158,18 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
                     .addBox(2.10f, -10.85f, -1.15f, 1.45f, 2.05f, 0.24f),
                 PartPose.ZERO);
         } else {
-            mesh.getRoot().addOrReplaceChild("inner",
+            // Inner ear strips follow the hanging parts rather than floating
+            // separately in front of the head.
+            mesh.getRoot().addOrReplaceChild("dog_left_inner",
                 CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-5.32f, -7.6f, -1.12f, 1.55f, 3.25f, 0.24f)
-                    .addBox(3.77f, -7.6f, -1.12f, 1.55f, 3.25f, 0.24f),
-                PartPose.ZERO);
+                    .addBox(-0.78f, 0.5f, -1.34f, 1.56f, 3.5f, 0.20f),
+                PartPose.offsetAndRotation(-4.95f, -7.65f, 0.08f,
+                    0.08f, 0f, 0.20f));
+            mesh.getRoot().addOrReplaceChild("dog_right_inner",
+                CubeListBuilder.create().texOffs(0, 0)
+                    .addBox(-0.78f, 0.5f, -1.34f, 1.56f, 3.5f, 0.20f),
+                PartPose.offsetAndRotation(4.95f, -7.65f, 0.08f,
+                    0.08f, 0f, -0.20f));
         }
         return LayerDefinition.create(mesh, 64, 64).bakeRoot();
     }
