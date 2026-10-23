@@ -107,43 +107,34 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         PartDefinition root = mesh.getRoot();
 
         if (cat) {
-            CubeListBuilder blocks = CubeListBuilder.create()
-                .texOffs(u, 0).addBox(-4.05f, -11.0f, -0.95f, 2.95f, 3.1f, 1.8f, grow)
-                .texOffs(u, 0).addBox(-3.5f, -12.7f, -0.7f, 1.75f, 1.9f, 1.35f, grow)
-                .texOffs(u, 0).addBox(1.1f, -11.0f, -0.95f, 2.95f, 3.1f, 1.8f, grow)
-                .texOffs(u, 0).addBox(1.75f, -12.7f, -0.7f, 1.75f, 1.9f, 1.35f, grow);
-            root.addOrReplaceChild("cat_ears", blocks, PartPose.ZERO);
+            // Narrow upright ears like the supplied Minecraft reference,
+            // with a short tapered crown and subtly inward-facing angles.
+            root.addOrReplaceChild("cat_left_ear",
+                CubeListBuilder.create().texOffs(u, 0)
+                    .addBox(-0.95f, -3.15f, -0.85f, 1.9f, 3.25f, 1.7f, grow)
+                    .texOffs(u, 0)
+                    .addBox(-0.75f, -4.25f, -0.7f, 1.5f, 1.2f, 1.4f, grow),
+                PartPose.offsetAndRotation(-2.55f, -8.6f, 0f, 0f, 0f, 0.14f));
+            root.addOrReplaceChild("cat_right_ear",
+                CubeListBuilder.create().texOffs(u, 0)
+                    .addBox(-0.95f, -3.15f, -0.85f, 1.9f, 3.25f, 1.7f, grow)
+                    .texOffs(u, 0)
+                    .addBox(-0.75f, -4.25f, -0.7f, 1.5f, 1.2f, 1.4f, grow),
+                PartPose.offsetAndRotation(2.55f, -8.6f, 0f, 0f, 0f, -0.14f));
         } else {
-            // The small upper "fold" hugs the crown; the much larger lower
-            // flap droops alongside the cheeks (mirrored left and right).
-            // These are separate articulated pieces, not upright blocks.
-            root.addOrReplaceChild("dog_left_fold",
+            // Broad, semi-upright husky ears: taller and slightly farther apart.
+            root.addOrReplaceChild("dog_left_ear",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.05f, -2.35f, -0.98f, 2.1f, 2.9f, 1.85f, grow),
-                PartPose.offsetAndRotation(-4.15f, -8.75f, 0.05f,
-                    0.18f, 0f, 0.72f));
-            root.addOrReplaceChild("dog_right_fold",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.05f, -2.35f, -0.98f, 2.1f, 2.9f, 1.85f, grow),
-                PartPose.offsetAndRotation(4.15f, -8.75f, 0.05f,
-                    0.18f, 0f, -0.72f));
-
-            // The hanging pieces overlap their folds, and their rounded
-            // blocky tips are lower and a little wider than the roots.
-            root.addOrReplaceChild("dog_left_flap",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.15f, -0.2f, -1.08f, 2.3f, 4.7f, 1.95f, grow)
+                    .addBox(-1.35f, -3.55f, -0.95f, 2.7f, 3.9f, 1.9f, grow)
                     .texOffs(u, 0)
-                    .addBox(-0.95f, 3.95f, -1.0f, 1.9f, 1.25f, 1.75f, grow),
-                PartPose.offsetAndRotation(-4.95f, -7.65f, 0.08f,
-                    0.08f, 0f, 0.20f));
-            root.addOrReplaceChild("dog_right_flap",
+                    .addBox(-1.0f, -5.0f, -0.75f, 2.0f, 1.6f, 1.5f, grow),
+                PartPose.offsetAndRotation(-3.35f, -8.7f, 0f, 0f, 0f, 0.18f));
+            root.addOrReplaceChild("dog_right_ear",
                 CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.15f, -0.2f, -1.08f, 2.3f, 4.7f, 1.95f, grow)
+                    .addBox(-1.35f, -3.55f, -0.95f, 2.7f, 3.9f, 1.9f, grow)
                     .texOffs(u, 0)
-                    .addBox(-0.95f, 3.95f, -1.0f, 1.9f, 1.25f, 1.75f, grow),
-                PartPose.offsetAndRotation(4.95f, -7.65f, 0.08f,
-                    0.08f, 0f, -0.20f));
+                    .addBox(-1.0f, -5.0f, -0.75f, 2.0f, 1.6f, 1.5f, grow),
+                PartPose.offsetAndRotation(3.35f, -8.7f, 0f, 0f, 0f, -0.18f));
         }
 
         return LayerDefinition.create(mesh, 64, 64).bakeRoot();
@@ -152,25 +143,26 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
     private static net.minecraft.client.model.geom.ModelPart makeInnerMesh(boolean cat) {
         MeshDefinition mesh = new MeshDefinition();
         if (cat) {
-            mesh.getRoot().addOrReplaceChild("inner",
+            // Tall, narrow pink highlights on the front, matching the screenshot.
+            mesh.getRoot().addOrReplaceChild("cat_left_inner",
                 CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-3.55f, -10.85f, -1.15f, 1.45f, 2.05f, 0.24f)
-                    .addBox(2.10f, -10.85f, -1.15f, 1.45f, 2.05f, 0.24f),
-                PartPose.ZERO);
+                    .addBox(-0.46f, -2.35f, -1.03f, 0.92f, 2.25f, 0.20f),
+                PartPose.offsetAndRotation(-2.55f, -8.6f, 0f, 0f, 0f, 0.14f));
+            mesh.getRoot().addOrReplaceChild("cat_right_inner",
+                CubeListBuilder.create().texOffs(0, 0)
+                    .addBox(-0.46f, -2.35f, -1.03f, 0.92f, 2.25f, 0.20f),
+                PartPose.offsetAndRotation(2.55f, -8.6f, 0f, 0f, 0f, -0.14f));
         } else {
-            // Inner ear strips follow the hanging parts rather than floating
-            // separately in front of the head.
             mesh.getRoot().addOrReplaceChild("dog_left_inner",
                 CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.78f, 0.5f, -1.34f, 1.56f, 3.5f, 0.20f),
-                PartPose.offsetAndRotation(-4.95f, -7.65f, 0.08f,
-                    0.08f, 0f, 0.20f));
+                    .addBox(-0.62f, -2.6f, -1.08f, 1.24f, 2.9f, 0.20f),
+                PartPose.offsetAndRotation(-3.35f, -8.7f, 0f, 0f, 0f, 0.18f));
             mesh.getRoot().addOrReplaceChild("dog_right_inner",
                 CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.78f, 0.5f, -1.34f, 1.56f, 3.5f, 0.20f),
-                PartPose.offsetAndRotation(4.95f, -7.65f, 0.08f,
-                    0.08f, 0f, -0.20f));
+                    .addBox(-0.62f, -2.6f, -1.08f, 1.24f, 2.9f, 0.20f),
+                PartPose.offsetAndRotation(3.35f, -8.7f, 0f, 0f, 0f, -0.18f));
         }
+
         return LayerDefinition.create(mesh, 64, 64).bakeRoot();
     }
 
