@@ -15,7 +15,7 @@ public final class EarsConfig {
 
     // Retained from the original mod for existing users' saved settings.
     public boolean customColor = false;
-    public int color = 0xB68A64;
+    public int color = 0xFFFFFF;
 
     // Independent choice of skin texture source for four distinct ear parts.
     public int outerLeftRegion = 0;
@@ -25,8 +25,9 @@ public final class EarsConfig {
 
     // PINK = traditional pink inner ear; SKIN = skin-region texture;
     // CUSTOM = editable, separate RGB inner-ear color.
-    public String innerMode = "PINK";
+    public String innerMode = "CUSTOM";
     public int innerColor = 0xF4A6B8;
+    public boolean colorPickerModesMigrated = false;
     // Each ear can copy an exact pixel from the current skin.
     public boolean outerLeftPicked=false,outerRightPicked=false;
     public boolean innerLeftPicked=false,innerRightPicked=false;
@@ -47,7 +48,7 @@ public final class EarsConfig {
                     // Older configs do not include these new fields.
                     if (!"SKIN".equals(loaded.innerMode) && !"CUSTOM".equals(loaded.innerMode) && !"PICKED".equals(loaded.innerMode))
                         loaded.innerMode = "PINK";
-                    loaded.innerColor = loaded.innerColor == 0 ? 0xF4A6B8 : loaded.innerColor & 0xFFFFFF;
+                    loaded.innerColor &= 0xFFFFFF;
                     loaded.outerLeftRegion = normalize(loaded.outerLeftRegion);
                     loaded.outerRightRegion = normalize(loaded.outerRightRegion);
                     loaded.innerLeftRegion = normalize(loaded.innerLeftRegion);
@@ -60,6 +61,16 @@ public final class EarsConfig {
                     loaded.outerRightPickedColor &= 0xFFFFFF;
                     loaded.innerLeftPickedColor &= 0xFFFFFF;
                     loaded.innerRightPickedColor &= 0xFFFFFF;
+                    // Earlier versions also had automatic texture modes and preset regions.
+                    // The streamlined picker version uses only RGB/picked pixel colors.
+                    if(!loaded.colorPickerModesMigrated){
+                        if(!loaded.customColor && !loaded.outerLeftPicked && !loaded.outerRightPicked)
+                            loaded.color=0xFFFFFF;
+                        if(!loaded.innerLeftPicked && !loaded.innerRightPicked &&
+                           !"CUSTOM".equals(loaded.innerMode))loaded.innerColor=0xF4A6B8;
+                        loaded.colorPickerModesMigrated=true;
+                    }
+                    if(!loaded.innerLeftPicked && !loaded.innerRightPicked)loaded.innerMode="CUSTOM";
                     return loaded;
                 }
             }
@@ -89,8 +100,8 @@ public final class EarsConfig {
     public void reset() {
         type = "CAT";
         customColor = false;
-        color = 0xB68A64;
-        innerMode = "PINK";
+        color = 0xFFFFFF;
+        innerMode = "CUSTOM";
         innerColor = 0xF4A6B8;
         outerLeftRegion = 0;
         outerRightRegion = 0;
@@ -98,6 +109,7 @@ public final class EarsConfig {
         innerRightRegion = 0;
         outerLeftPicked=false;outerRightPicked=false;
         innerLeftPicked=false;innerRightPicked=false;
+        colorPickerModesMigrated=true;
         outerLeftPickedColor=0xFFFFFF;outerRightPickedColor=0xFFFFFF;
         innerLeftPickedColor=0xF4A6B8;innerRightPickedColor=0xF4A6B8;
         outerLeftX=8;outerLeftY=0;outerRightX=8;outerRightY=0;
