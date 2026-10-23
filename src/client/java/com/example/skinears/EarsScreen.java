@@ -37,7 +37,7 @@ public final class EarsScreen extends Screen {
                 b->{settings.type="CAT";saveAndRefresh();})
                 .bounds(x,top+35,111,20).build());
             addRenderableWidget(Button.builder(
-                Component.literal("DOG".equals(settings.type)?"[Husky ears]":"Husky ears"),
+                Component.literal("DOG".equals(settings.type)?"[Dog ears]":"Dog ears"),
                 b->{settings.type="DOG";saveAndRefresh();})
                 .bounds(x+119,top+35,111,20).build());
 
