@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component;
 public final class EarsScreen extends Screen {
     private final Screen previous;
     private final EarsConfig settings=SkinEarsClient.config;
-    private int page=0; // 0: general, 1: skin regions, 2: manual color sliders
+    private int page=0; // 0: general, 1: skin atlas/regions, 2: manual colors
 
     public EarsScreen(Screen previous) {
         super(Component.literal("Skin Ears"));
@@ -21,7 +21,7 @@ public final class EarsScreen extends Screen {
         int top=Math.max(34,height/2-122);
         addRenderableWidget(Button.builder(Component.literal("Main"),b->{page=0;rebuildWidgets();})
                 .bounds(left,top,72,20).build());
-        addRenderableWidget(Button.builder(Component.literal("Skin areas"),b->{page=1;rebuildWidgets();})
+        addRenderableWidget(Button.builder(Component.literal("Skin picker"),b->{page=1;rebuildWidgets();})
                 .bounds(left+79,top,72,20).build());
         addRenderableWidget(Button.builder(Component.literal("Colors"),b->{page=2;rebuildWidgets();})
                 .bounds(left+158,top,72,20).build());
@@ -48,7 +48,10 @@ public final class EarsScreen extends Screen {
             addRegionButton(left,top+124,"Inner right",3);
             addRenderableWidget(Button.builder(Component.literal("Reset skin areas"),
                     b->{settings.outerLeftRegion=0;settings.outerRightRegion=0;
-                        settings.innerLeftRegion=0;settings.innerRightRegion=0;saveAndRefresh();})
+                        settings.innerLeftRegion=0;settings.innerRightRegion=0;
+                        settings.outerLeftPicked=false;settings.outerRightPicked=false;
+                        settings.innerLeftPicked=false;settings.innerRightPicked=false;
+                        settings.customColor=false;settings.innerMode="PINK";saveAndRefresh();})
                     .bounds(left,top+160,230,20).build());
         } else {
             addRenderableWidget(Button.builder(Component.literal(settings.customColor?"Outer: Custom":"Outer: Skin"),
@@ -81,20 +84,33 @@ public final class EarsScreen extends Screen {
     private void addRegionButton(int x,int y,String label,int part){
         int index=switch(part){case 0->settings.outerLeftRegion;case 1->settings.outerRightRegion;
             case 2->settings.innerLeftRegion;default->settings.innerRightRegion;};
-        String region=SkinRegion.fromIndex(index).label;
-        addRenderableWidget(Button.builder(Component.literal(label+": "+region+"  >"),b->{
+        boolean picked=switch(part){case 0->settings.outerLeftPicked;case 1->settings.outerRightPicked;
+            case 2->settings.innerLeftPicked;default->settings.innerRightPicked;};
+        int px=switch(part){case 0->settings.outerLeftX;case 1->settings.outerRightX;
+            case 2->settings.innerLeftX;default->settings.innerRightX;};
+        int py=switch(part){case 0->settings.outerLeftY;case 1->settings.outerRightY;
+            case 2->settings.innerLeftY;default->settings.innerRightY;};
+        String chosen=picked ? "Pixel ("+px+","+py+")":SkinRegion.fromIndex(index).label;
+        addRenderableWidget(Button.builder(Component.literal(label+": "+chosen+"  >"),b->{
             int next=SkinRegion.next(index);
-            switch(part){case 0->settings.outerLeftRegion=next;case 1->settings.outerRightRegion=next;
-                case 2->settings.innerLeftRegion=next;default->settings.innerRightRegion=next;}
+            switch(part){
+                case 0->{settings.outerLeftRegion=next;settings.outerLeftPicked=false;}
+                case 1->{settings.outerRightRegion=next;settings.outerRightPicked=false;}
+                case 2->{settings.innerLeftRegion=next;settings.innerLeftPicked=false;settings.innerMode="SKIN";}
+                default->{settings.innerRightRegion=next;settings.innerRightPicked=false;settings.innerMode="SKIN";}
+            }
             saveAndRefresh();
-        }).bounds(x,y,230,20).build());
+        }).bounds(x,y,159,20).build());
+        addRenderableWidget(Button.builder(Component.literal("Pick pixel"),b->{
+            minecraft.gui.setScreen(new SkinPixelPickerScreen(this,part));
+        }).bounds(x+164,y,66,20).build());
     }
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float dt) {
         super.extractRenderState(graphics,mouseX,mouseY,dt);
         int top=Math.max(34,height/2-122);
         graphics.centeredText(font,title,width/2,top-19,0xFFFFFFFF);
-        String hint=page==1?"Click a part to cycle the skin region":
+        String hint=page==1?"Cycle a region or pick an exact skin pixel":
             page==2?"RGB sliders edit the selected outer/inner color":
                 "K to open • Saved automatically";
         graphics.centeredText(font,Component.literal(hint),width/2,top+194,0xFFCCCCCC);
