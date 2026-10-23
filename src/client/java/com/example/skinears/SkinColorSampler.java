@@ -55,9 +55,15 @@ public final class SkinColorSampler {
         try {
             if(texture instanceof ClientAsset.DownloadedTexture downloaded) {
                 URI uri=URI.create(downloaded.url());
-                if(!"https".equalsIgnoreCase(uri.getScheme()) ||
-                    !"textures.minecraft.net".equalsIgnoreCase(uri.getHost())) return null;
-                HttpURLConnection conn=(HttpURLConnection)uri.toURL().openConnection();
+                // Mojang commonly supplies http://textures.minecraft.net/... skin URLs.
+                // Accept the trusted Minecraft domain, but download securely via HTTPS.
+                if(!"textures.minecraft.net".equalsIgnoreCase(uri.getHost()) ||
+                   !("http".equalsIgnoreCase(uri.getScheme()) ||
+                     "https".equalsIgnoreCase(uri.getScheme())) ||
+                   uri.getRawPath()==null || !uri.getRawPath().matches("/texture/[a-zA-Z0-9]+"))
+                    return null;
+                URI secure=URI.create("https://textures.minecraft.net"+uri.getRawPath());
+                HttpURLConnection conn=(HttpURLConnection)secure.toURL().openConnection();
                 conn.setConnectTimeout(5500);
                 conn.setReadTimeout(5500);
                 conn.setInstanceFollowRedirects(false);
