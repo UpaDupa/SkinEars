@@ -136,15 +136,22 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
             root.addOrReplaceChild("ear",cubes,
                     PartPose.offsetAndRotation(x,-8.1f,0f,0f,0f,angle));
         } else {
-            // Husky-style, semi-upright ears.
-            if(inside) cubes.addBox(-0.66f,-2.65f,-1.11f,1.32f,2.8f,0.23f);
-            else {
-                cubes.addBox(-1.35f,-3.55f,-0.95f,2.7f,3.9f,1.9f);
-                cubes.addBox(-1.0f,-5f,-0.75f,2f,1.6f,1.5f);
+            // Back to the original long, floppy dog-ear silhouette, but
+            // each entire ear is a rigid piece rotated INWARD at the crown.
+            // No upper hinge, bend or folded sections: the tips simply slope
+            // out from the head while the tops lean toward its center.
+            float pivotX=side==0?-5.0f:5.0f;
+            float lean=side==0?0.29f:-0.29f;
+            if(inside) {
+                cubes.addBox(-0.68f,0.65f,-1.34f,1.35f,3.4f,0.30f);
+            } else {
+                cubes.addBox(-1.5f,-1.25f,-1.1f,3.0f,5.7f,2.0f);
+                // Subtle blocky lower tip from the original mesh; it is
+                // part of the same rigid model, not a folded flap.
+                cubes.addBox(-1.4f,2.45f,-1.0f,2.8f,2.2f,1.8f);
             }
             root.addOrReplaceChild("ear",cubes,
-                    PartPose.offsetAndRotation(side==0?-3.35f:3.35f,-8.7f,0f,
-                        0f,0f,side==0?-0.25f:0.25f));
+                PartPose.offsetAndRotation(pivotX,-8.0f,0f,0f,0f,lean));
         }
         return LayerDefinition.create(mesh,64,64).bakeRoot();
     }
