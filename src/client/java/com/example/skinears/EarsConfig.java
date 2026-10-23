@@ -7,136 +7,88 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Only head-top skin texture and manually picked skin pixels remain.
+ * Inner ears also offer their original default pink.
+ */
 public final class EarsConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("skinears.json");
+    private static final Path FILE =
+        FabricLoader.getInstance().getConfigDir().resolve("skinears.json");
 
-    public String type = "CAT";
+    public String type="CAT";
+    public String outerMode="HEAD";  // HEAD or PICKED
+    public String innerMode="PINK";  // PINK, HEAD or PICKED
 
-    // HEAD = live skin texture from the top of the head.
-    // RGB = RGB slider color; PICKED = an exact chosen skin pixel.
-    public String outerMode = "HEAD";
-
-    // Retained from the original mod for existing users' saved settings.
-    public boolean customColor = false;
-    public int color = 0xFFFFFF;
-
-    // Independent choice of skin texture source for four distinct ear parts.
-    public int outerLeftRegion = 0;
-    public int outerRightRegion = 0;
-    public int innerLeftRegion = 0;
-    public int innerRightRegion = 0;
-
-    // PINK = traditional pink inner ear; SKIN = skin-region texture;
-    // CUSTOM = editable, separate RGB inner-ear color.
-    public String innerMode = "RGB";
-    public int innerColor = 0xF4A6B8;
-    public boolean colorPickerModesMigrated = false;
-    // Each ear can copy an exact pixel from the current skin.
     public boolean outerLeftPicked=false,outerRightPicked=false;
     public boolean innerLeftPicked=false,innerRightPicked=false;
     public int outerLeftX=8,outerLeftY=0,outerRightX=8,outerRightY=0;
     public int innerLeftX=8,innerLeftY=0,innerRightX=8,innerRightY=0;
-
-    // Persist selected RGB colors so the picker works immediately, even offline.
     public int outerLeftPickedColor=0xFFFFFF,outerRightPickedColor=0xFFFFFF;
     public int innerLeftPickedColor=0xF4A6B8,innerRightPickedColor=0xF4A6B8;
 
-    public static EarsConfig load() {
-        try {
-            if (Files.exists(FILE)) {
-                EarsConfig loaded = GSON.fromJson(Files.readString(FILE, StandardCharsets.UTF_8), EarsConfig.class);
-                if (loaded != null) {
-                    loaded.type = "DOG".equals(loaded.type) ? "DOG" : "CAT";
-                    loaded.color &= 0xFFFFFF;
-                    // Migration from older versions which used customColor and PICKED flags.
-                    if (loaded.outerMode == null) {
-                        loaded.outerMode = loaded.outerLeftPicked || loaded.outerRightPicked ?
-                            "PICKED" : loaded.customColor ? "RGB" : "HEAD";
-                    }
-                    if (!"HEAD".equals(loaded.outerMode) &&
-                        !"RGB".equals(loaded.outerMode) &&
-                        !"PICKED".equals(loaded.outerMode)) loaded.outerMode = "HEAD";
-                    // Older configs do not include these new fields.
-                    if ("SKIN".equals(loaded.innerMode)) loaded.innerMode="HEAD";
-                    if ("CUSTOM".equals(loaded.innerMode) || "PINK".equals(loaded.innerMode))
-                        loaded.innerMode="RGB";
-                    if (!"HEAD".equals(loaded.innerMode) &&
-                        !"RGB".equals(loaded.innerMode) &&
-                        !"PICKED".equals(loaded.innerMode)) loaded.innerMode="RGB";
-                    loaded.innerColor &= 0xFFFFFF;
-                    loaded.outerLeftRegion = normalize(loaded.outerLeftRegion);
-                    loaded.outerRightRegion = normalize(loaded.outerRightRegion);
-                    loaded.innerLeftRegion = normalize(loaded.innerLeftRegion);
-                    loaded.innerRightRegion = normalize(loaded.innerRightRegion);
-                    loaded.outerLeftX=clamp(loaded.outerLeftX);loaded.outerLeftY=clamp(loaded.outerLeftY);
-                    loaded.outerRightX=clamp(loaded.outerRightX);loaded.outerRightY=clamp(loaded.outerRightY);
-                    loaded.innerLeftX=clamp(loaded.innerLeftX);loaded.innerLeftY=clamp(loaded.innerLeftY);
-                    loaded.innerRightX=clamp(loaded.innerRightX);loaded.innerRightY=clamp(loaded.innerRightY);
-                    loaded.outerLeftPickedColor &= 0xFFFFFF;
-                    loaded.outerRightPickedColor &= 0xFFFFFF;
-                    loaded.innerLeftPickedColor &= 0xFFFFFF;
-                    loaded.innerRightPickedColor &= 0xFFFFFF;
-                    // Earlier versions also had automatic texture modes and preset regions.
-                    // The streamlined picker version uses only RGB/picked pixel colors.
-                    if(!loaded.colorPickerModesMigrated){
-                        if(!loaded.customColor && !loaded.outerLeftPicked && !loaded.outerRightPicked)
-                            loaded.color=0xFFFFFF;
-                        if(!loaded.innerLeftPicked && !loaded.innerRightPicked &&
-                           !"RGB".equals(loaded.innerMode))loaded.innerColor=0xF4A6B8;
-                        loaded.colorPickerModesMigrated=true;
-                    }
-
-                    return loaded;
+    public static EarsConfig load(){
+        try{
+            if(Files.exists(FILE)){
+                EarsConfig c=GSON.fromJson(Files.readString(FILE,StandardCharsets.UTF_8),EarsConfig.class);
+                if(c!=null){
+                    c.type="DOG".equals(c.type)?"DOG":"CAT";
+                    // Migrate previous RGB modes to head texture / default pink.
+                    if(!"HEAD".equals(c.outerMode) && !"PICKED".equals(c.outerMode))
+                        c.outerMode=(c.outerLeftPicked||c.outerRightPicked)?"PICKED":"HEAD";
+                    if("SKIN".equals(c.innerMode))c.innerMode="HEAD";
+                    if(!"PINK".equals(c.innerMode) && !"HEAD".equals(c.innerMode) &&
+                       !"PICKED".equals(c.innerMode))
+                        c.innerMode=(c.innerLeftPicked||c.innerRightPicked)?"PICKED":"PINK";
+                    if("PICKED".equals(c.outerMode) &&
+                       !c.outerLeftPicked && !c.outerRightPicked)c.outerMode="HEAD";
+                    if("PICKED".equals(c.innerMode) &&
+                       !c.innerLeftPicked && !c.innerRightPicked)c.innerMode="PINK";
+                    c.outerLeftX=clamp(c.outerLeftX);c.outerLeftY=clamp(c.outerLeftY);
+                    c.outerRightX=clamp(c.outerRightX);c.outerRightY=clamp(c.outerRightY);
+                    c.innerLeftX=clamp(c.innerLeftX);c.innerLeftY=clamp(c.innerLeftY);
+                    c.innerRightX=clamp(c.innerRightX);c.innerRightY=clamp(c.innerRightY);
+                    c.outerLeftPickedColor&=0xFFFFFF;c.outerRightPickedColor&=0xFFFFFF;
+                    c.innerLeftPickedColor&=0xFFFFFF;c.innerRightPickedColor&=0xFFFFFF;
+                    return c;
                 }
             }
-        } catch (Exception ignored) { }
+        }catch(Exception ignored){}
         return new EarsConfig();
     }
 
-    private static int normalize(int index) {
-        return Math.floorMod(index, SkinRegion.values().length);
-    }
-
     private static int clamp(int n){return Math.max(0,Math.min(63,n));}
-    public void selectPixel(int part,int x,int y,int rgb){
-        x=clamp(x);y=clamp(y);rgb &= 0xFFFFFF;
+
+    public void selectPixel(int part,int x,int y,int color){
+        x=clamp(x);y=clamp(y);color&=0xFFFFFF;
         switch(part){
-            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;outerLeftPickedColor=rgb;outerMode="PICKED";}
-            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;outerRightPickedColor=rgb;outerMode="PICKED";}
+            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;
+                       outerLeftPickedColor=color;outerMode="PICKED";}
+            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;
+                       outerRightPickedColor=color;outerMode="PICKED";}
             case 2 -> {innerLeftX=x;innerLeftY=y;innerLeftPicked=true;
-                       innerLeftPickedColor=rgb;innerMode="PICKED";}
+                       innerLeftPickedColor=color;innerMode="PICKED";}
             case 3 -> {innerRightX=x;innerRightY=y;innerRightPicked=true;
-                       innerRightPickedColor=rgb;innerMode="PICKED";}
-            default -> throw new IllegalArgumentException("Invalid ear part");
+                       innerRightPickedColor=color;innerMode="PICKED";}
+            default -> throw new IllegalArgumentException("Unknown ear section");
         }
         save();
     }
 
-    public void reset() {
-        type = "CAT";
-        customColor = false;
-        outerMode = "HEAD";
-        color = 0xFFFFFF;
-        innerMode = "RGB";
-        innerColor = 0xF4A6B8;
-        outerLeftRegion = 0;
-        outerRightRegion = 0;
-        innerLeftRegion = 0;
-        innerRightRegion = 0;
+    public void reset(){
+        type="CAT";outerMode="HEAD";innerMode="PINK";
         outerLeftPicked=false;outerRightPicked=false;
         innerLeftPicked=false;innerRightPicked=false;
-        colorPickerModesMigrated=true;
-        outerLeftPickedColor=0xFFFFFF;outerRightPickedColor=0xFFFFFF;
-        innerLeftPickedColor=0xF4A6B8;innerRightPickedColor=0xF4A6B8;
         outerLeftX=8;outerLeftY=0;outerRightX=8;outerRightY=0;
         innerLeftX=8;innerLeftY=0;innerRightX=8;innerRightY=0;
+        outerLeftPickedColor=0xFFFFFF;outerRightPickedColor=0xFFFFFF;
+        innerLeftPickedColor=0xF4A6B8;innerRightPickedColor=0xF4A6B8;
     }
 
-    public void save() {
-        try {
+    public void save(){
+        try{
             Files.createDirectories(FILE.getParent());
-            Files.writeString(FILE, GSON.toJson(this), StandardCharsets.UTF_8);
-        } catch (Exception ignored) { }
+            Files.writeString(FILE,GSON.toJson(this),StandardCharsets.UTF_8);
+        }catch(Exception ignored){}
     }
 }
