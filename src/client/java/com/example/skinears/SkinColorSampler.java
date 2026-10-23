@@ -1,7 +1,10 @@
 package com.example.skinears;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.ClientAsset;
 import net.minecraft.world.entity.player.PlayerSkin;
+
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -9,54 +12,63 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.imageio.ImageIO;
+
+/** Safely downloads and caches the Minecraft skin image so the eyedropper can read pixels. */
 public final class SkinColorSampler {
- private static final int FALLBACK=0xB68A64;
- private final Map<String,CompletableFuture<Integer>> cache=new ConcurrentHashMap<>();
- private volatile int latestOwnColor=FALLBACK;
- public int latestOwnColor(){return latestOwnColor;}
- public void setLatestOwnColor(int color){latestOwnColor=color&0xFFFFFF;}
- public int colorFor(PlayerSkin skin){
-  ClientAsset.Texture texture=skin.body();
-  String key=texture.texturePath().toString();
-  CompletableFuture<Integer> future=cache.computeIfAbsent(key,unused->CompletableFuture.supplyAsync(()->loadColor(texture)));
-  return future.getNow(FALLBACK);
- }
- private static int loadColor(ClientAsset.Texture texture){
-  try {
-   if(texture instanceof ClientAsset.DownloadedTexture downloaded){
-    URI url=URI.create(downloaded.url());
-    if(!"https".equalsIgnoreCase(url.getScheme())||!"textures.minecraft.net".equalsIgnoreCase(url.getHost()))return FALLBACK;
-    HttpURLConnection connection=(HttpURLConnection)url.toURL().openConnection();
-    connection.setConnectTimeout(2500);connection.setReadTimeout(2500);connection.setInstanceFollowRedirects(false);
-    try(InputStream stream=connection.getInputStream()){return dominantTopColor(ImageIO.read(stream));}
-    finally{connection.disconnect();}
-   }
-   if(texture instanceof ClientAsset.ResourceTexture resourceTexture){
-    var resource=Minecraft.getInstance().getResourceManager().getResource(resourceTexture.texturePath());
-    if(resource.isPresent())try(InputStream stream=resource.get().open()){return dominantTopColor(ImageIO.read(stream));}
-   }
-  }catch(Exception ignored){}
-  return FALLBACK;
- }
- public static int dominantTopColor(BufferedImage skin){
-  if(skin==null||skin.getWidth()<48||skin.getHeight()<8)return FALLBACK;
-  int[] counts=new int[4096],red=new int[4096],green=new int[4096],blue=new int[4096];
-  for(int y=0;y<8;y++)for(int x=0;x<8;x++){
-   int base=skin.getRGB(8+x,y),overlay=skin.getRGB(40+x,y),alpha=(overlay>>>24)&255;
-   if(alpha>0){
-    int r=(((overlay>>16)&255)*alpha+((base>>16)&255)*(255-alpha))/255;
-    int g=(((overlay>>8)&255)*alpha+((base>>8)&255)*(255-alpha))/255;
-    int b=((overlay&255)*alpha+(base&255)*(255-alpha))/255;
-    base=(r<<16)|(g<<8)|b;
-   }
-   int r=(base>>>16)&255,g=(base>>>8)&255,b=base&255;
-   int idx=(r>>4)*256+(g>>4)*16+(b>>4);
-   counts[idx]++;red[idx]+=r;green[idx]+=g;blue[idx]+=b;
-  }
-  int best=0;
-  for(int i=1;i<counts.length;i++)if(counts[i]>counts[best])best=i;
-  int n=Math.max(counts[best],1);
-  return (red[best]/n<<16)|(green[best]/n<<8)|(blue[best]/n);
- }
+    private final Map<String, CompletableFuture<BufferedImage>> cache = new ConcurrentHashMap<>();
+    private volatile int latestOwnColor = 0xB68A64;
+
+    public int latestOwnColor(){return latestOwnColor;}
+    public void setLatestOwnColor(int color){latestOwnColor=color & 0xFFFFFF;}
+
+    private CompletableFuture<BufferedImage> imageFuture(PlayerSkin skin) {
+        ClientAsset.Texture texture=skin.body();
+        return cache.computeIfAbsent(texture.texturePath().toString(),
+            key -> CompletableFuture.supplyAsync(() -> readSkin(texture)));
+    }
+
+    /** Returns -1 while loading, for transparent pixels, or on image failure. */
+    public int pixel(PlayerSkin skin,int x,int y) {
+        if (skin==null || x<0 || y<0 || x>=64 || y>=64) return -1;
+        BufferedImage img=imageFuture(skin).getNow(null);
+        if (img==null || x>=img.getWidth() || y>=img.getHeight()) return -1;
+        int argb=img.getRGB(x,y);
+        return ((argb>>>24)&255)<16 ? -1 : argb & 0xFFFFFF;
+    }
+
+    public boolean loaded(PlayerSkin skin) {
+        if(skin==null)return false;
+        return imageFuture(skin).getNow(null)!=null;
+    }
+
+    private static BufferedImage readSkin(ClientAsset.Texture texture) {
+        try {
+            if(texture instanceof ClientAsset.DownloadedTexture downloaded) {
+                URI uri=URI.create(downloaded.url());
+                if(!"https".equalsIgnoreCase(uri.getScheme()) ||
+                    !"textures.minecraft.net".equalsIgnoreCase(uri.getHost())) return null;
+                HttpURLConnection conn=(HttpURLConnection)uri.toURL().openConnection();
+                conn.setConnectTimeout(5500);
+                conn.setReadTimeout(5500);
+                conn.setInstanceFollowRedirects(false);
+                try(InputStream stream=conn.getInputStream()) {
+                    BufferedImage image=ImageIO.read(stream);
+                    return image!=null && image.getWidth()==64 && image.getHeight()>=32 ? image:null;
+                } finally {conn.disconnect();}
+            }
+            if(texture instanceof ClientAsset.ResourceTexture resourceTexture) {
+                var optional=Minecraft.getInstance().getResourceManager().getResource(resourceTexture.texturePath());
+                if(optional.isPresent())try(InputStream stream=optional.get().open()){
+                    return ImageIO.read(stream);
+                }
+            }
+        }catch(Exception ignored) {}
+        return null;
+    }
+
+    /** Kept for compatibility with older configuration screens. */
+    public int colorFor(PlayerSkin skin) {
+        int sampled=pixel(skin,12,4);
+        return sampled>=0?sampled:0xB68A64;
+    }
 }
