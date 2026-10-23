@@ -27,6 +27,11 @@ public final class EarsConfig {
     // CUSTOM = editable, separate RGB inner-ear color.
     public String innerMode = "PINK";
     public int innerColor = 0xF4A6B8;
+    // Each ear can copy an exact pixel from the current skin.
+    public boolean outerLeftPicked=false,outerRightPicked=false;
+    public boolean innerLeftPicked=false,innerRightPicked=false;
+    public int outerLeftX=8,outerLeftY=0,outerRightX=8,outerRightY=0;
+    public int innerLeftX=8,innerLeftY=0,innerRightX=8,innerRightY=0;
 
     public static EarsConfig load() {
         try {
@@ -36,13 +41,17 @@ public final class EarsConfig {
                     loaded.type = "DOG".equals(loaded.type) ? "DOG" : "CAT";
                     loaded.color &= 0xFFFFFF;
                     // Older configs do not include these new fields.
-                    if (!"SKIN".equals(loaded.innerMode) && !"CUSTOM".equals(loaded.innerMode))
+                    if (!"SKIN".equals(loaded.innerMode) && !"CUSTOM".equals(loaded.innerMode) && !"PICKED".equals(loaded.innerMode))
                         loaded.innerMode = "PINK";
                     loaded.innerColor = loaded.innerColor == 0 ? 0xF4A6B8 : loaded.innerColor & 0xFFFFFF;
                     loaded.outerLeftRegion = normalize(loaded.outerLeftRegion);
                     loaded.outerRightRegion = normalize(loaded.outerRightRegion);
                     loaded.innerLeftRegion = normalize(loaded.innerLeftRegion);
                     loaded.innerRightRegion = normalize(loaded.innerRightRegion);
+                    loaded.outerLeftX=clamp(loaded.outerLeftX);loaded.outerLeftY=clamp(loaded.outerLeftY);
+                    loaded.outerRightX=clamp(loaded.outerRightX);loaded.outerRightY=clamp(loaded.outerRightY);
+                    loaded.innerLeftX=clamp(loaded.innerLeftX);loaded.innerLeftY=clamp(loaded.innerLeftY);
+                    loaded.innerRightX=clamp(loaded.innerRightX);loaded.innerRightY=clamp(loaded.innerRightY);
                     return loaded;
                 }
             }
@@ -52,6 +61,19 @@ public final class EarsConfig {
 
     private static int normalize(int index) {
         return Math.floorMod(index, SkinRegion.values().length);
+    }
+
+    private static int clamp(int n){return Math.max(0,Math.min(63,n));}
+    public void selectPixel(int part,int x,int y){
+        x=clamp(x);y=clamp(y);
+        switch(part){
+            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;customColor=false;}
+            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;customColor=false;}
+            case 2 -> {innerLeftX=x;innerLeftY=y;innerLeftPicked=true;innerMode="PICKED";}
+            case 3 -> {innerRightX=x;innerRightY=y;innerRightPicked=true;innerMode="PICKED";}
+            default -> throw new IllegalArgumentException("Invalid ear part");
+        }
+        save();
     }
 
     public void reset() {
@@ -64,6 +86,10 @@ public final class EarsConfig {
         outerRightRegion = 0;
         innerLeftRegion = 0;
         innerRightRegion = 0;
+        outerLeftPicked=false;outerRightPicked=false;
+        innerLeftPicked=false;innerRightPicked=false;
+        outerLeftX=8;outerLeftY=0;outerRightX=8;outerRightY=0;
+        innerLeftX=8;innerLeftY=0;innerRightX=8;innerRightY=0;
     }
 
     public void save() {
