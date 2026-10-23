@@ -28,19 +28,16 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
     private static final Identifier WHITE =
         Identifier.fromNamespaceAndPath("minecraft", "textures/block/white_concrete.png");
 
-    private final EarModel[][][] outer = new EarModel[2][2][SkinRegion.values().length];
-    private final EarModel[][][] inner = new EarModel[2][2][SkinRegion.values().length];
+    private final EarModel[][] outer = new EarModel[2][2];
+    private final EarModel[][] inner = new EarModel[2][2];
 
     public EarsLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
         super(parent);
         for (int shape=0;shape<2;shape++)
-            for (int side=0;side<2;side++)
-                for (SkinRegion region : SkinRegion.values()) {
-                    outer[shape][side][region.ordinal()] =
-                        new EarModel(mesh(shape == 0, side, region.u, region.v, false));
-                    inner[shape][side][region.ordinal()] =
-                        new EarModel(mesh(shape == 0, side, region.u, region.v, true));
-                }
+            for (int side=0;side<2;side++) {
+                outer[shape][side] = new EarModel(mesh(shape==0,side,false));
+                inner[shape][side] = new EarModel(mesh(shape==0,side,true));
+            }
     }
 
     @Override
@@ -54,47 +51,39 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         boolean dog = local && "DOG".equals(settings.type);
         int shape = dog ? 1 : 0;
         int overlay = LivingEntityRenderer.getOverlayCoords(state, 0f);
-        Identifier skin = state.skin.body().texturePath();
         poses.pushPose();
         getParentModel().head.translateAndRotate(poses);
-
-        for (int side=0;side<2;side++) {
-            int regionIndex = side == 0 ? settings.outerLeftRegion : settings.outerRightRegion;
-            int innerIndex = side == 0 ? settings.innerLeftRegion : settings.innerRightRegion;
-            if (!local) {regionIndex=0;innerIndex=0;}
-            regionIndex=Math.floorMod(regionIndex,SkinRegion.values().length);
-            innerIndex=Math.floorMod(innerIndex,SkinRegion.values().length);
-            boolean pickedOuter = local && !settings.customColor &&
-                (side==0 ? settings.outerLeftPicked:settings.outerRightPicked);
-            int pickX=side==0?settings.outerLeftX:settings.outerRightX;
-            int pickY=side==0?settings.outerLeftY:settings.outerRightY;
-            int pickedOuterColor=pickedOuter ?
-                SkinEarsClient.COLORS.pixel(state.skin,pickX,pickY) : -1;
-
-            boolean outerTinted=local && settings.customColor || pickedOuterColor>=0;
-            int outerColor=local && settings.customColor ? settings.color :
-                pickedOuterColor>=0 ? pickedOuterColor : 0xFFFFFF;
-            Identifier outerTexture=outerTinted?WHITE:skin;
-            collector.submitModel(outer[shape][side][regionIndex], state, poses,
-                    RenderTypes.entityCutout(outerTexture), light, overlay,
-                    0xFF000000 | (outerColor&0xFFFFFF), null, state.outlineColor);
-
-            String mode=local?settings.innerMode:"PINK";
-            boolean pickInner="PICKED".equals(mode) &&
-                (side==0?settings.innerLeftPicked:settings.innerRightPicked);
-            int ix=side==0?settings.innerLeftX:settings.innerRightX;
-            int iy=side==0?settings.innerLeftY:settings.innerRightY;
-            int sampledInner=pickInner?
-                SkinEarsClient.COLORS.pixel(state.skin,ix,iy):-1;
-            // Both the whole-region texture and an exact sampled pixel are supported.
-            boolean copiedRegion="SKIN".equals(mode);
-            Identifier innerTexture=copiedRegion?skin:WHITE;
-            int innerColor="CUSTOM".equals(mode)?settings.innerColor:
-                sampledInner>=0?sampledInner:0xF4A6B8;
-            collector.submitModel(inner[shape][side][innerIndex], state, poses,
-                    RenderTypes.entityCutout(innerTexture), light, overlay,
-                    copiedRegion?0xFFFFFFFF:0xFF000000|(innerColor&0xFFFFFF),
-                    null, state.outlineColor);
+        for(int side=0;side<2;side++){
+            int outerRgb=0xFFFFFF;
+            int innerRgb=0xF4A6B8;
+            if(local){
+                boolean selectedOuter=side==0?settings.outerLeftPicked:settings.outerRightPicked;
+                if(selectedOuter){
+                    int sx=side==0?settings.outerLeftX:settings.outerRightX;
+                    int sy=side==0?settings.outerLeftY:settings.outerRightY;
+                    int saved=side==0?settings.outerLeftPickedColor:settings.outerRightPickedColor;
+                    int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
+                    outerRgb=live>=0?live:saved;
+                } else {
+                    outerRgb=settings.color;
+                }
+                boolean selectedInner=side==0?settings.innerLeftPicked:settings.innerRightPicked;
+                if(selectedInner && "PICKED".equals(settings.innerMode)){
+                    int sx=side==0?settings.innerLeftX:settings.innerRightX;
+                    int sy=side==0?settings.innerLeftY:settings.innerRightY;
+                    int saved=side==0?settings.innerLeftPickedColor:settings.innerRightPickedColor;
+                    int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
+                    innerRgb=live>=0?live:saved;
+                } else {
+                    innerRgb=settings.innerColor;
+                }
+            }
+            collector.submitModel(outer[shape][side],state,poses,
+                RenderTypes.entityCutout(WHITE),light,overlay,
+                0xFF000000|(outerRgb&0xFFFFFF),null,state.outlineColor);
+            collector.submitModel(inner[shape][side],state,poses,
+                RenderTypes.entityCutout(WHITE),light,overlay,
+                0xFF000000|(innerRgb&0xFFFFFF),null,state.outlineColor);
         }
         poses.popPose();
     }
@@ -104,12 +93,12 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
      * coordinates of the selected region on the player's original skin.
      */
     private static net.minecraft.client.model.geom.ModelPart mesh(
-            boolean cat, int side, int u, int v, boolean inside) {
+            boolean cat, int side, boolean inside) {
         MeshDefinition mesh=new MeshDefinition();
         PartDefinition root=mesh.getRoot();
         float x=side==0 ? -2.7f : 2.7f;
-        float angle=side==0 ? 0.12f : -0.12f;
-        CubeListBuilder cubes=CubeListBuilder.create().texOffs(u,v);
+        float angle=side==0 ? -0.22f : 0.22f;
+        CubeListBuilder cubes=CubeListBuilder.create().texOffs(0,0);
         if(cat) {
             // Restored squat cat ears: wider than the old narrow reference shape
             // and shorter than the old tall cat ears.
@@ -129,7 +118,7 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
             }
             root.addOrReplaceChild("ear",cubes,
                     PartPose.offsetAndRotation(side==0?-3.35f:3.35f,-8.7f,0f,
-                        0f,0f,side==0?0.18f:-0.18f));
+                        0f,0f,side==0?-0.25f:0.25f));
         }
         return LayerDefinition.create(mesh,64,64).bakeRoot();
     }
