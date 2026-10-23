@@ -15,7 +15,7 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 public final class EarsLayer extends RenderLayer<AvatarRenderState,PlayerModel> {
- private static final Identifier WHITE=Identifier.fromNamespaceAndPath("skinears","textures/white.png");
+ private static final Identifier WHITE=Identifier.fromNamespaceAndPath("minecraft","textures/block/white_concrete.png");
  private final EarModel catOuter=new EarModel(makeMesh(true,false));
  private final EarModel catInner=new EarModel(makeMesh(true,true));
  private final EarModel dogOuter=new EarModel(makeMesh(false,false));
