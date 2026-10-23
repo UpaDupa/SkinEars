@@ -13,6 +13,7 @@ public final class EarsScreen extends Screen {
     private final Screen previous;
     private final EarsConfig settings=SkinEarsClient.config;
     private int page=0;
+    private String pickConfirmation="";
 
     public EarsScreen(Screen previous){
         super(Component.literal("Skin Ears Settings"));
@@ -95,6 +96,17 @@ public final class EarsScreen extends Screen {
             .bounds(x,y,230,20).build());
     }
 
+    void colorWasPicked(int part,int rgb){
+        page=1;
+        String target=switch(part){
+            case 0->"outside left";
+            case 1->"outside right";
+            case 2->"inside left";
+            default->"inside right";
+        };
+        pickConfirmation=String.format("Applied #%06X to %s",rgb&0xFFFFFF,target);
+    }
+
     private void saveAndRefresh(){settings.save();rebuildWidgets();}
 
     @Override public void extractRenderState(GuiGraphicsExtractor graphics,
@@ -104,7 +116,7 @@ public final class EarsScreen extends Screen {
         graphics.centeredText(font,title,width/2,top-21,0xFFFFFFFF);
         String hint=page==0?
             "Outer: "+settings.outerMode+"   Inner: "+settings.innerMode :
-            "Choose an ear part, then left-click a pixel on your skin";
+            pickConfirmation.isEmpty() ? "Choose an ear part, then left-click a pixel" : pickConfirmation;
         graphics.centeredText(font,Component.literal(hint),width/2,
             top+194,0xFFCCCCCC);
     }
