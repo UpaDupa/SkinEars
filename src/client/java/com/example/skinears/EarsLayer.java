@@ -28,142 +28,94 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
     private static final Identifier WHITE =
         Identifier.fromNamespaceAndPath("minecraft", "textures/block/white_concrete.png");
 
-    private final EarModel catBase = new EarModel(makeMesh(true, false));
-    private final EarModel catHair = new EarModel(makeMesh(true, true));
-    private final EarModel dogBase = new EarModel(makeMesh(false, false));
-    private final EarModel dogHair = new EarModel(makeMesh(false, true));
-    private final EarModel catInner = new EarModel(makeInnerMesh(true));
-    private final EarModel dogInner = new EarModel(makeInnerMesh(false));
+    private final EarModel[][][] outer = new EarModel[2][2][SkinRegion.values().length];
+    private final EarModel[][][] inner = new EarModel[2][2][SkinRegion.values().length];
 
     public EarsLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
         super(parent);
+        for (int shape=0;shape<2;shape++)
+            for (int side=0;side<2;side++)
+                for (SkinRegion region : SkinRegion.values()) {
+                    outer[shape][side][region.ordinal()] =
+                        new EarModel(mesh(shape == 0, side, region.u, region.v, false));
+                    inner[shape][side][region.ordinal()] =
+                        new EarModel(mesh(shape == 0, side, region.u, region.v, true));
+                }
     }
 
     @Override
-    public void submit(PoseStack poseStack, SubmitNodeCollector collector, int packedLight,
+    public void submit(PoseStack poses, SubmitNodeCollector collector, int light,
                        AvatarRenderState state, float yRot, float xRot) {
         if (state.isInvisible || state.isSpectator) return;
-
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
-
+        EarsConfig settings = SkinEarsClient.config;
         boolean local = state.id == mc.player.getId();
-        EarsConfig config = SkinEarsClient.config;
-        boolean dog = local && "DOG".equals(config.type);
-        boolean manual = local && config.customColor;
+        boolean dog = local && "DOG".equals(settings.type);
+        int shape = dog ? 1 : 0;
+        int overlay = LivingEntityRenderer.getOverlayCoords(state, 0f);
+        Identifier skin = state.skin.body().texturePath();
+        poses.pushPose();
+        getParentModel().head.translateAndRotate(poses);
 
-        EarModel base = dog ? dogBase : catBase;
-        EarModel hat = dog ? dogHair : catHair;
-        EarModel inner = dog ? dogInner : catInner;
-        int overlay = LivingEntityRenderer.getOverlayCoords(state, 0.0f);
+        for (int side=0;side<2;side++) {
+            int regionIndex = side == 0 ? settings.outerLeftRegion : settings.outerRightRegion;
+            int innerIndex = side == 0 ? settings.innerLeftRegion : settings.innerRightRegion;
+            if (!local) {regionIndex=0;innerIndex=0;}
+            regionIndex=Math.floorMod(regionIndex,SkinRegion.values().length);
+            innerIndex=Math.floorMod(innerIndex,SkinRegion.values().length);
+            int outerTint = local && settings.customColor ?
+                    0xFF000000 | (settings.color & 0xFFFFFF) : 0xFFFFFFFF;
+            Identifier outerTexture = local && settings.customColor ? WHITE : skin;
+            collector.submitModel(outer[shape][side][regionIndex], state, poses,
+                    RenderTypes.entityCutout(outerTexture), light, overlay,
+                    outerTint, null, state.outlineColor);
 
-        poseStack.pushPose();
-        getParentModel().head.translateAndRotate(poseStack);
-
-        if (manual) {
-            // Manual mode: one user-selected RGB color, using a plain white texture.
-            collector.submitModel(base, state, poseStack,
-                RenderTypes.entityCutout(WHITE), packedLight, overlay,
-                0xFF000000 | (config.color & 0xFFFFFF), null, state.outlineColor);
-        } else {
-            // Automatic mode: the player's actual skin head-top pixels, not an average.
-            Identifier skinTexture = state.skin.body().texturePath();
-            collector.submitModel(base, state, poseStack,
-                RenderTypes.entityCutout(skinTexture), packedLight, overlay,
-                0xFFFFFFFF, null, state.outlineColor);
-
-            // The second skin layer is usually hair/hat. It is often transparent,
-            // so render it just outside the base to preserve layered hairstyles.
-            if (state.showHat) {
-                collector.submitModel(hat, state, poseStack,
-                    RenderTypes.entityCutout(skinTexture), packedLight, overlay,
-                    0xFFFFFFFF, null, state.outlineColor);
-            }
+            String innerMode = local ? settings.innerMode : "PINK";
+            boolean copied = "SKIN".equals(innerMode);
+            Identifier innerTexture = copied ? skin : WHITE;
+            int tint = "CUSTOM".equals(innerMode) ?
+                    0xFF000000 | (settings.innerColor & 0xFFFFFF) : 0xFFF4A6B8;
+            collector.submitModel(inner[shape][side][innerIndex], state, poses,
+                    RenderTypes.entityCutout(innerTexture), light, overlay,
+                    copied ? 0xFFFFFFFF : tint, null, state.outlineColor);
         }
-
-        // A small colored inner surface makes the ears readable on busy skins.
-        collector.submitModel(inner, state, poseStack,
-            RenderTypes.entityCutout(WHITE), packedLight, overlay,
-            manual ? innerColor(config.color) : 0xFFF4A6B8,
-            null, state.outlineColor);
-        poseStack.popPose();
-    }
-
-    private static int innerColor(int color) {
-        int r = (((color >> 16) & 255) + 2 * 255) / 3;
-        int g = (((color >> 8) & 255) + 2 * 161) / 3;
-        int b = ((color & 255) + 2 * 181) / 3;
-        return 0xFF000000 | (r << 16) | (g << 8) | b;
+        poses.popPose();
     }
 
     /**
-     * Each cube is texture-unwrapped into a small window of the top 8x8
-     * head-skin square. Overlay cubes shift +32 pixels to the head hat layer.
+     * One independent mesh for each ear and region. Each uses the texture
+     * coordinates of the selected region on the player's original skin.
      */
-    private static net.minecraft.client.model.geom.ModelPart makeMesh(boolean cat, boolean hatLayer) {
-        int u = hatLayer ? 39 : 7;
-        CubeDeformation grow = new CubeDeformation(hatLayer ? 0.035f : 0f);
-        MeshDefinition mesh = new MeshDefinition();
-        PartDefinition root = mesh.getRoot();
-
-        if (cat) {
-            // Narrow upright ears like the supplied Minecraft reference,
-            // with a short tapered crown and subtly inward-facing angles.
-            root.addOrReplaceChild("cat_left_ear",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-0.95f, -3.15f, -0.85f, 1.9f, 3.25f, 1.7f, grow)
-                    .texOffs(u, 0)
-                    .addBox(-0.75f, -4.25f, -0.7f, 1.5f, 1.2f, 1.4f, grow),
-                PartPose.offsetAndRotation(-2.55f, -8.6f, 0f, 0f, 0f, 0.14f));
-            root.addOrReplaceChild("cat_right_ear",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-0.95f, -3.15f, -0.85f, 1.9f, 3.25f, 1.7f, grow)
-                    .texOffs(u, 0)
-                    .addBox(-0.75f, -4.25f, -0.7f, 1.5f, 1.2f, 1.4f, grow),
-                PartPose.offsetAndRotation(2.55f, -8.6f, 0f, 0f, 0f, -0.14f));
+    private static net.minecraft.client.model.geom.ModelPart mesh(
+            boolean cat, int side, int u, int v, boolean inside) {
+        MeshDefinition mesh=new MeshDefinition();
+        PartDefinition root=mesh.getRoot();
+        float x=side==0 ? -2.7f : 2.7f;
+        float angle=side==0 ? 0.12f : -0.12f;
+        CubeListBuilder cubes=CubeListBuilder.create().texOffs(u,v);
+        if(cat) {
+            // Restored squat cat ears: wider than the old narrow reference shape
+            // and shorter than the old tall cat ears.
+            if(inside) cubes.addBox(-0.72f,-2.0f,-1.08f,1.44f,1.95f,0.23f);
+            else {
+                cubes.addBox(-1.45f,-2.75f,-0.95f,2.9f,2.95f,1.9f);
+                cubes.addBox(-1.04f,-3.95f,-0.78f,2.08f,1.35f,1.56f);
+            }
+            root.addOrReplaceChild("ear",cubes,
+                    PartPose.offsetAndRotation(x,-8.1f,0f,0f,0f,angle));
         } else {
-            // Broad, semi-upright husky ears: taller and slightly farther apart.
-            root.addOrReplaceChild("dog_left_ear",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.35f, -3.55f, -0.95f, 2.7f, 3.9f, 1.9f, grow)
-                    .texOffs(u, 0)
-                    .addBox(-1.0f, -5.0f, -0.75f, 2.0f, 1.6f, 1.5f, grow),
-                PartPose.offsetAndRotation(-3.35f, -8.7f, 0f, 0f, 0f, 0.18f));
-            root.addOrReplaceChild("dog_right_ear",
-                CubeListBuilder.create().texOffs(u, 0)
-                    .addBox(-1.35f, -3.55f, -0.95f, 2.7f, 3.9f, 1.9f, grow)
-                    .texOffs(u, 0)
-                    .addBox(-1.0f, -5.0f, -0.75f, 2.0f, 1.6f, 1.5f, grow),
-                PartPose.offsetAndRotation(3.35f, -8.7f, 0f, 0f, 0f, -0.18f));
+            // Husky-style, semi-upright ears.
+            if(inside) cubes.addBox(-0.66f,-2.65f,-1.11f,1.32f,2.8f,0.23f);
+            else {
+                cubes.addBox(-1.35f,-3.55f,-0.95f,2.7f,3.9f,1.9f);
+                cubes.addBox(-1.0f,-5f,-0.75f,2f,1.6f,1.5f);
+            }
+            root.addOrReplaceChild("ear",cubes,
+                    PartPose.offsetAndRotation(side==0?-3.35f:3.35f,-8.7f,0f,
+                        0f,0f,side==0?0.18f:-0.18f));
         }
-
-        return LayerDefinition.create(mesh, 64, 64).bakeRoot();
-    }
-
-    private static net.minecraft.client.model.geom.ModelPart makeInnerMesh(boolean cat) {
-        MeshDefinition mesh = new MeshDefinition();
-        if (cat) {
-            // Tall, narrow pink highlights on the front, matching the screenshot.
-            mesh.getRoot().addOrReplaceChild("cat_left_inner",
-                CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.46f, -2.35f, -1.03f, 0.92f, 2.25f, 0.20f),
-                PartPose.offsetAndRotation(-2.55f, -8.6f, 0f, 0f, 0f, 0.14f));
-            mesh.getRoot().addOrReplaceChild("cat_right_inner",
-                CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.46f, -2.35f, -1.03f, 0.92f, 2.25f, 0.20f),
-                PartPose.offsetAndRotation(2.55f, -8.6f, 0f, 0f, 0f, -0.14f));
-        } else {
-            mesh.getRoot().addOrReplaceChild("dog_left_inner",
-                CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.62f, -2.6f, -1.08f, 1.24f, 2.9f, 0.20f),
-                PartPose.offsetAndRotation(-3.35f, -8.7f, 0f, 0f, 0f, 0.18f));
-            mesh.getRoot().addOrReplaceChild("dog_right_inner",
-                CubeListBuilder.create().texOffs(0, 0)
-                    .addBox(-0.62f, -2.6f, -1.08f, 1.24f, 2.9f, 0.20f),
-                PartPose.offsetAndRotation(3.35f, -8.7f, 0f, 0f, 0f, -0.18f));
-        }
-
-        return LayerDefinition.create(mesh, 64, 64).bakeRoot();
+        return LayerDefinition.create(mesh,64,64).bakeRoot();
     }
 
     private static final class EarModel extends EntityModel<AvatarRenderState> {
