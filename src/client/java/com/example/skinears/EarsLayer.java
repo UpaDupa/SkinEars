@@ -19,10 +19,9 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 
 /**
- * In automatic mode the outer ears use the player skin texture directly.
- * The UV coordinates are taken from the TOP of the head (8..15, 0..7)
- * with the matching hat/hair overlay (40..47, 0..7).
- * This preserves multiple colors and patterns instead of flattening to one color.
+ * Cat and husky ears tilt outward. Outer and inner sections can use
+ * the head-top skin texture or a color picked from a skin pixel.
+ * The inside of the ears also supports the default soft pink.
  */
 public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
     private static final Identifier WHITE =
@@ -59,13 +58,13 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         getParentModel().head.translateAndRotate(poses);
         Identifier skin=state.skin.body().texturePath();
         String outerMode=local?settings.outerMode:"HEAD";
-        String innerMode=local?settings.innerMode:"RGB";
+        String innerMode=local?settings.innerMode:"PINK";
         boolean outsideHead="HEAD".equals(outerMode);
         boolean insideHead="HEAD".equals(innerMode);
 
         for(int side=0;side<2;side++){
-            int outerRgb=local?settings.color:0xFFFFFF;
-            int innerRgb=local?settings.innerColor:0xF4A6B8;
+            int outerRgb=0xFFFFFF;
+            int innerRgb=0xF4A6B8;
 
             if(local && "PICKED".equals(outerMode)){
                 boolean selected=side==0?settings.outerLeftPicked:settings.outerRightPicked;
@@ -118,10 +117,7 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         poses.popPose();
     }
 
-    /**
-     * One independent mesh for each ear and region. Each uses the texture
-     * coordinates of the selected region on the player's original skin.
-     */
+    /** Models for the outer and inner surfaces, tilted outwards. */
     private static net.minecraft.client.model.geom.ModelPart mesh(
             boolean cat, int side, boolean inside, boolean headTexture) {
         MeshDefinition mesh=new MeshDefinition();
