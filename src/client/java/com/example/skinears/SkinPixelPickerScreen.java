@@ -35,12 +35,18 @@ public final class SkinPixelPickerScreen extends Screen {
 
     private int gridSize() {
         // Never taller than the available screen; use integer pixel scaling.
-        return 64*Math.max(1,Math.min(4,(height-125)/64));
+        return 64*Math.max(1,Math.min(4,(height-155)/64));
     }
     private int gridX(){return (width-gridSize())/2;}
     private int gridY(){return 31;}
 
     @Override protected void init() {
+        addRenderableWidget(Button.builder(Component.literal("Reload skin colors"),b->{
+            if(minecraft.player!=null) {
+                SkinEarsClient.COLORS.reload(minecraft.player.getSkin());
+                status="Reloading skin pixel data...";
+            }
+        }).bounds(width/2-100,height-51,200,20).build());
         addRenderableWidget(Button.builder(Component.literal("Back to Skin Ears"),
             b->onClose()).bounds(width/2-100,height-26,200,20).build());
     }
@@ -69,7 +75,14 @@ public final class SkinPixelPickerScreen extends Screen {
                     graphics.fill(x+s+8,y+8,x+s+27,y+27,0xFF000000|preview);
                 }
             }
-            if(!SkinEarsClient.COLORS.loaded(skin))status="Loading skin pixels - check network if this persists";
+            if(SkinEarsClient.COLORS.loaded(skin)){
+                if(status.startsWith("Loading") || status.startsWith("Reloading"))
+                    status="Left-click any nontransparent skin pixel";
+            } else if(SkinEarsClient.COLORS.loading(skin)){
+                status="Loading skin pixels...";
+            } else {
+                status="Skin download failed - choose Reload skin colors";
+            }
         }
 
         graphics.centeredText(font,
@@ -79,13 +92,13 @@ public final class SkinPixelPickerScreen extends Screen {
             Component.literal(pointerX<0?status:
                 "Pixel ("+pointerX+", "+pointerY+")  -  "+status),
             width/2,y+s+24,0xFFAAAAAA);
-        graphics.centeredText(font,Component.literal("Transparent pixels cannot be selected"),
+        graphics.centeredText(font,Component.literal("Left-click a colored pixel. Transparent pixels are ignored."),
             width/2,y+s+37,0xFFAAAAAA);
     }
 
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int x=gridX(),y=gridY(),size=gridSize();
-        if(event.button()==1 &&
+        if(event.button()==0 &&
            event.x()>=x && event.x()<x+size &&
            event.y()>=y && event.y()<y+size && minecraft.player!=null) {
             int scale=size/64;
@@ -97,7 +110,7 @@ public final class SkinPixelPickerScreen extends Screen {
                 status=SkinEarsClient.COLORS.loaded(skin)?
                     "Transparent pixel - try another spot":"Skin not loaded yet";
             } else {
-                settings.selectPixel(part,sx,sy);
+                settings.selectPixel(part,sx,sy,color);
                 minecraft.gui.setScreen(back);
             }
             return true;
