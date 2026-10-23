@@ -1,5 +1,6 @@
 package com.example.skinears;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -96,9 +97,10 @@ public final class SkinPixelPickerScreen extends Screen {
             width/2,y+s+37,0xFFAAAAAA);
     }
 
+    // 26.3 uses SDL3: MOUSE_BUTTON_LEFT is 1, not the old GLFW 0.
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int x=gridX(),y=gridY(),size=gridSize();
-        if(event.button()==0 &&
+        if(event.button()==InputConstants.MOUSE_BUTTON_LEFT &&
            event.x()>=x && event.x()<x+size &&
            event.y()>=y && event.y()<y+size && minecraft.player!=null) {
             int scale=size/64;
@@ -111,6 +113,7 @@ public final class SkinPixelPickerScreen extends Screen {
                     "Transparent pixel - try another spot":"Skin not loaded yet";
             } else {
                 settings.selectPixel(part,sx,sy,color);
+                back.colorWasPicked(part,color);
                 minecraft.gui.setScreen(back);
             }
             return true;
