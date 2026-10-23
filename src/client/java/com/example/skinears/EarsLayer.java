@@ -30,13 +30,17 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 
     private final EarModel[][] outer = new EarModel[2][2];
     private final EarModel[][] inner = new EarModel[2][2];
+    private final EarModel[][] headOuter = new EarModel[2][2];
+    private final EarModel[][] headInner = new EarModel[2][2];
 
     public EarsLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
         super(parent);
         for (int shape=0;shape<2;shape++)
             for (int side=0;side<2;side++) {
-                outer[shape][side] = new EarModel(mesh(shape==0,side,false));
-                inner[shape][side] = new EarModel(mesh(shape==0,side,true));
+                outer[shape][side] = new EarModel(mesh(shape==0,side,false,false));
+                inner[shape][side] = new EarModel(mesh(shape==0,side,true,false));
+                headOuter[shape][side] = new EarModel(mesh(shape==0,side,false,true));
+                headInner[shape][side] = new EarModel(mesh(shape==0,side,true,true));
             }
     }
 
@@ -53,37 +57,63 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
         int overlay = LivingEntityRenderer.getOverlayCoords(state, 0f);
         poses.pushPose();
         getParentModel().head.translateAndRotate(poses);
+        Identifier skin=state.skin.body().texturePath();
+        String outerMode=local?settings.outerMode:"HEAD";
+        String innerMode=local?settings.innerMode:"RGB";
+        boolean outsideHead="HEAD".equals(outerMode);
+        boolean insideHead="HEAD".equals(innerMode);
+
         for(int side=0;side<2;side++){
-            int outerRgb=0xFFFFFF;
-            int innerRgb=0xF4A6B8;
-            if(local){
-                boolean selectedOuter=side==0?settings.outerLeftPicked:settings.outerRightPicked;
-                if(selectedOuter){
+            int outerRgb=local?settings.color:0xFFFFFF;
+            int innerRgb=local?settings.innerColor:0xF4A6B8;
+
+            if(local && "PICKED".equals(outerMode)){
+                boolean selected=side==0?settings.outerLeftPicked:settings.outerRightPicked;
+                if(!selected) {
+                    // Picking just one ear applies it to both until the other is chosen.
+                    selected=side==0?settings.outerRightPicked:settings.outerLeftPicked;
+                    if(selected){
+                        int sx=side==0?settings.outerRightX:settings.outerLeftX;
+                        int sy=side==0?settings.outerRightY:settings.outerLeftY;
+                        int saved=side==0?settings.outerRightPickedColor:settings.outerLeftPickedColor;
+                        int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
+                        outerRgb=live>=0?live:saved;
+                    }
+                } else {
                     int sx=side==0?settings.outerLeftX:settings.outerRightX;
                     int sy=side==0?settings.outerLeftY:settings.outerRightY;
                     int saved=side==0?settings.outerLeftPickedColor:settings.outerRightPickedColor;
                     int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
                     outerRgb=live>=0?live:saved;
-                } else {
-                    outerRgb=settings.color;
                 }
-                boolean selectedInner=side==0?settings.innerLeftPicked:settings.innerRightPicked;
-                if(selectedInner && "PICKED".equals(settings.innerMode)){
+            }
+
+            if(local && "PICKED".equals(innerMode)){
+                boolean selected=side==0?settings.innerLeftPicked:settings.innerRightPicked;
+                if(!selected) {
+                    selected=side==0?settings.innerRightPicked:settings.innerLeftPicked;
+                    if(selected){
+                        int sx=side==0?settings.innerRightX:settings.innerLeftX;
+                        int sy=side==0?settings.innerRightY:settings.innerLeftY;
+                        int saved=side==0?settings.innerRightPickedColor:settings.innerLeftPickedColor;
+                        int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
+                        innerRgb=live>=0?live:saved;
+                    }
+                } else {
                     int sx=side==0?settings.innerLeftX:settings.innerRightX;
                     int sy=side==0?settings.innerLeftY:settings.innerRightY;
                     int saved=side==0?settings.innerLeftPickedColor:settings.innerRightPickedColor;
                     int live=SkinEarsClient.COLORS.pixel(state.skin,sx,sy);
                     innerRgb=live>=0?live:saved;
-                } else {
-                    innerRgb=settings.innerColor;
                 }
             }
-            collector.submitModel(outer[shape][side],state,poses,
-                RenderTypes.entityCutout(WHITE),light,overlay,
-                0xFF000000|(outerRgb&0xFFFFFF),null,state.outlineColor);
-            collector.submitModel(inner[shape][side],state,poses,
-                RenderTypes.entityCutout(WHITE),light,overlay,
-                0xFF000000|(innerRgb&0xFFFFFF),null,state.outlineColor);
+
+            collector.submitModel(outsideHead?headOuter[shape][side]:outer[shape][side],
+                state,poses,RenderTypes.entityCutout(outsideHead?skin:WHITE),light,overlay,
+                outsideHead?0xFFFFFFFF:0xFF000000|(outerRgb&0xFFFFFF),null,state.outlineColor);
+            collector.submitModel(insideHead?headInner[shape][side]:inner[shape][side],
+                state,poses,RenderTypes.entityCutout(insideHead?skin:WHITE),light,overlay,
+                insideHead?0xFFFFFFFF:0xFF000000|(innerRgb&0xFFFFFF),null,state.outlineColor);
         }
         poses.popPose();
     }
@@ -93,12 +123,12 @@ public final class EarsLayer extends RenderLayer<AvatarRenderState, PlayerModel>
      * coordinates of the selected region on the player's original skin.
      */
     private static net.minecraft.client.model.geom.ModelPart mesh(
-            boolean cat, int side, boolean inside) {
+            boolean cat, int side, boolean inside, boolean headTexture) {
         MeshDefinition mesh=new MeshDefinition();
         PartDefinition root=mesh.getRoot();
         float x=side==0 ? -2.7f : 2.7f;
         float angle=side==0 ? -0.22f : 0.22f;
-        CubeListBuilder cubes=CubeListBuilder.create().texOffs(0,0);
+        CubeListBuilder cubes=CubeListBuilder.create().texOffs(headTexture?7:0,0);
         if(cat) {
             // Restored squat cat ears: wider than the old narrow reference shape
             // and shorter than the old tall cat ears.
