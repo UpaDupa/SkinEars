@@ -34,23 +34,31 @@ public final class EarsScreen extends Screen {
                 b->{settings.type="CAT";saveAndRefresh();}).bounds(x,top+37,111,20).build());
             addRenderableWidget(Button.builder(Component.literal(settings.type.equals("DOG")?"[Husky ears]":"Husky ears"),
                 b->{settings.type="DOG";saveAndRefresh();}).bounds(x+119,top+37,111,20).build());
+
+            addRenderableWidget(Button.builder(Component.literal(
+                "HEAD".equals(settings.outerMode)?"[Outer: Head texture]":"Outer: Use head texture"),
+                b->{settings.outerMode="HEAD";settings.customColor=false;saveAndRefresh();})
+                .bounds(x,top+78,230,20).build());
+            addRenderableWidget(Button.builder(Component.literal(
+                "HEAD".equals(settings.innerMode)?"[Inner: Head texture]":"Inner: Use head texture"),
+                b->{settings.innerMode="HEAD";saveAndRefresh();})
+                .bounds(x,top+108,230,20).build());
             addRenderableWidget(Button.builder(Component.literal("Reset all settings"),
-                b->{settings.reset();editInner=false;saveAndRefresh();}).bounds(x,top+142,230,20).build());
+                b->{settings.reset();editInner=false;saveAndRefresh();})
+                .bounds(x,top+149,230,20).build());
         } else if(page==1){
             addRenderableWidget(Button.builder(Component.literal(editInner?"Edit outer RGB":"[Edit outer RGB]"),
-                b->{editInner=false;settings.customColor=true;
-                    settings.outerLeftPicked=false;settings.outerRightPicked=false;
+                b->{editInner=false;settings.outerMode="RGB";settings.customColor=true;
                     saveAndRefresh();}).bounds(x,top+34,111,20).build());
             addRenderableWidget(Button.builder(Component.literal(editInner?"[Edit inner RGB]":"Edit inner RGB"),
-                b->{editInner=true;settings.innerMode="CUSTOM";
-                    settings.innerLeftPicked=false;settings.innerRightPicked=false;
+                b->{editInner=true;settings.innerMode="RGB";
                     saveAndRefresh();}).bounds(x+119,top+34,111,20).build());
             for(int channel=0;channel<3;channel++){
                 addRenderableWidget(new ChannelSlider(x,top+69+channel*27,230,20,channel));
             }
             addRenderableWidget(Button.builder(Component.literal("Reset RGB and picks"),
                 b->{settings.color=0xFFFFFF;settings.innerColor=0xF4A6B8;
-                    settings.customColor=true;settings.innerMode="CUSTOM";
+                    settings.customColor=true;settings.outerMode="RGB";settings.innerMode="RGB";
                     settings.outerLeftPicked=false;settings.outerRightPicked=false;
                     settings.innerLeftPicked=false;settings.innerRightPicked=false;
                     saveAndRefresh();}).bounds(x,top+164,230,20).build());
@@ -62,7 +70,7 @@ public final class EarsScreen extends Screen {
             addRenderableWidget(Button.builder(Component.literal("Clear picked colors"),
                 b->{settings.outerLeftPicked=false;settings.outerRightPicked=false;
                     settings.innerLeftPicked=false;settings.innerRightPicked=false;
-                    settings.innerMode="CUSTOM";settings.customColor=true;
+                    settings.innerMode="RGB";settings.customColor=true;settings.outerMode="RGB";
                     saveAndRefresh();}).bounds(x,top+166,230,20).build());
         }
 
@@ -83,7 +91,9 @@ public final class EarsScreen extends Screen {
             case 2->settings.innerLeftPickedColor;
             default->settings.innerRightPickedColor;
         };
-        String detail=picked?String.format("#%06X",color&0xFFFFFF):"RGB";
+        String mode=part<2?settings.outerMode:settings.innerMode;
+        String detail=picked?String.format("#%06X",color&0xFFFFFF):
+            "HEAD".equals(mode)?"HEAD":"RGB";
         addRenderableWidget(Button.builder(Component.literal(label+": "+detail),
             b->minecraft.gui.setScreen(new SkinPixelPickerScreen(this,part)))
             .bounds(x,y,230,20).build());
@@ -97,9 +107,9 @@ public final class EarsScreen extends Screen {
         int top=Math.max(34,(height-225)/2);
         graphics.centeredText(font,title,width/2,top-23,0xFFFFFFFF);
         String hint=switch(page){
-            case 0->"Both ear styles tilt outwards";
-            case 1->"RGB sliders set BOTH outer or inner ear colors";
-            default->"Pick a skin pixel for each ear part";
+            case 0->"Outer: "+settings.outerMode+" | Inner: "+settings.innerMode;
+            case 1->"Sliders immediately switch their ear section to RGB";
+            default->"Picking a pixel immediately switches to skin color";
         };
         graphics.centeredText(font,Component.literal(hint),width/2,top+193,0xFFCCCCCC);
         if(page==1){
@@ -128,12 +138,10 @@ public final class EarsScreen extends Screen {
             int amount=(int)Math.round(value*255);
             if(editInner){
                 settings.innerColor=(settings.innerColor&~(255<<shift))|(amount<<shift);
-                settings.innerMode="CUSTOM";
-                settings.innerLeftPicked=false;settings.innerRightPicked=false;
+                settings.innerMode="RGB";
             }else{
                 settings.color=(settings.color&~(255<<shift))|(amount<<shift);
-                settings.customColor=true;
-                settings.outerLeftPicked=false;settings.outerRightPicked=false;
+                settings.outerMode="RGB";settings.customColor=true;
             }
             settings.save();
         }
