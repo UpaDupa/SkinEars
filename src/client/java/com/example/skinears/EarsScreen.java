@@ -107,7 +107,7 @@ public final class EarsScreen extends Screen {
         private final int channel;
         private ChannelSlider(int x,int y,int width,int height,int channel) {
             super(x,y,width,height,Component.empty(),
-                    ((currentColor()>>(16-8*channel))&255)/255.0);
+                    (((editInner?settings.innerColor:settings.color)>>(16-8*channel))&255)/255.0);
             this.channel=channel;updateMessage();
         }
         private int currentColor(){return editInner?settings.innerColor:settings.color;}
