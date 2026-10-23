@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "skinears",
+  "version": "${version}",
+  "name": "Skin Ears",
+  "description": "Cat or dog ears with auto skin-top matching, manual RGB colors and reset.",
+  "authors": ["Custom mod project"],
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.example.skinears.SkinEarsClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
