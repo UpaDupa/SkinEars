@@ -13,6 +13,10 @@ public final class EarsConfig {
 
     public String type = "CAT";
 
+    // HEAD = live skin texture from the top of the head.
+    // RGB = RGB slider color; PICKED = an exact chosen skin pixel.
+    public String outerMode = "HEAD";
+
     // Retained from the original mod for existing users' saved settings.
     public boolean customColor = false;
     public int color = 0xFFFFFF;
@@ -25,7 +29,7 @@ public final class EarsConfig {
 
     // PINK = traditional pink inner ear; SKIN = skin-region texture;
     // CUSTOM = editable, separate RGB inner-ear color.
-    public String innerMode = "CUSTOM";
+    public String innerMode = "RGB";
     public int innerColor = 0xF4A6B8;
     public boolean colorPickerModesMigrated = false;
     // Each ear can copy an exact pixel from the current skin.
@@ -45,9 +49,21 @@ public final class EarsConfig {
                 if (loaded != null) {
                     loaded.type = "DOG".equals(loaded.type) ? "DOG" : "CAT";
                     loaded.color &= 0xFFFFFF;
+                    // Migration from older versions which used customColor and PICKED flags.
+                    if (loaded.outerMode == null) {
+                        loaded.outerMode = loaded.outerLeftPicked || loaded.outerRightPicked ?
+                            "PICKED" : loaded.customColor ? "RGB" : "HEAD";
+                    }
+                    if (!"HEAD".equals(loaded.outerMode) &&
+                        !"RGB".equals(loaded.outerMode) &&
+                        !"PICKED".equals(loaded.outerMode)) loaded.outerMode = "HEAD";
                     // Older configs do not include these new fields.
-                    if (!"SKIN".equals(loaded.innerMode) && !"CUSTOM".equals(loaded.innerMode) && !"PICKED".equals(loaded.innerMode))
-                        loaded.innerMode = "PINK";
+                    if ("SKIN".equals(loaded.innerMode)) loaded.innerMode="HEAD";
+                    if ("CUSTOM".equals(loaded.innerMode) || "PINK".equals(loaded.innerMode))
+                        loaded.innerMode="RGB";
+                    if (!"HEAD".equals(loaded.innerMode) &&
+                        !"RGB".equals(loaded.innerMode) &&
+                        !"PICKED".equals(loaded.innerMode)) loaded.innerMode="RGB";
                     loaded.innerColor &= 0xFFFFFF;
                     loaded.outerLeftRegion = normalize(loaded.outerLeftRegion);
                     loaded.outerRightRegion = normalize(loaded.outerRightRegion);
@@ -67,10 +83,10 @@ public final class EarsConfig {
                         if(!loaded.customColor && !loaded.outerLeftPicked && !loaded.outerRightPicked)
                             loaded.color=0xFFFFFF;
                         if(!loaded.innerLeftPicked && !loaded.innerRightPicked &&
-                           !"CUSTOM".equals(loaded.innerMode))loaded.innerColor=0xF4A6B8;
+                           !"RGB".equals(loaded.innerMode))loaded.innerColor=0xF4A6B8;
                         loaded.colorPickerModesMigrated=true;
                     }
-                    if(!loaded.innerLeftPicked && !loaded.innerRightPicked)loaded.innerMode="CUSTOM";
+
                     return loaded;
                 }
             }
@@ -86,8 +102,8 @@ public final class EarsConfig {
     public void selectPixel(int part,int x,int y,int rgb){
         x=clamp(x);y=clamp(y);rgb &= 0xFFFFFF;
         switch(part){
-            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;outerLeftPickedColor=rgb;}
-            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;outerRightPickedColor=rgb;}
+            case 0 -> {outerLeftX=x;outerLeftY=y;outerLeftPicked=true;outerLeftPickedColor=rgb;outerMode="PICKED";}
+            case 1 -> {outerRightX=x;outerRightY=y;outerRightPicked=true;outerRightPickedColor=rgb;outerMode="PICKED";}
             case 2 -> {innerLeftX=x;innerLeftY=y;innerLeftPicked=true;
                        innerLeftPickedColor=rgb;innerMode="PICKED";}
             case 3 -> {innerRightX=x;innerRightY=y;innerRightPicked=true;
@@ -100,8 +116,9 @@ public final class EarsConfig {
     public void reset() {
         type = "CAT";
         customColor = false;
+        outerMode = "HEAD";
         color = 0xFFFFFF;
-        innerMode = "CUSTOM";
+        innerMode = "RGB";
         innerColor = 0xF4A6B8;
         outerLeftRegion = 0;
         outerRightRegion = 0;
