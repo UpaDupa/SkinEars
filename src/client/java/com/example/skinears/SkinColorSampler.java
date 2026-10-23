@@ -41,6 +41,16 @@ public final class SkinColorSampler {
         return imageFuture(skin).getNow(null)!=null;
     }
 
+    public boolean loading(PlayerSkin skin) {
+        return skin!=null && !imageFuture(skin).isDone();
+    }
+
+    public void reload(PlayerSkin skin) {
+        if(skin==null)return;
+        cache.remove(skin.body().texturePath().toString());
+        imageFuture(skin);
+    }
+
     private static BufferedImage readSkin(ClientAsset.Texture texture) {
         try {
             if(texture instanceof ClientAsset.DownloadedTexture downloaded) {
